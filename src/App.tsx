@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { BookmarkCard } from './components/BookmarkCard'
 import { api } from './lib/api'
 import type { Bookmark } from './types'
 
@@ -50,61 +51,65 @@ export default function App() {
     setBookmarks((prev) => prev.filter((b) => b.id !== id))
   }
 
+  const countLabel =
+    bookmarks.length === 1 ? '1 gespeicherter Link' : `${bookmarks.length} gespeicherte Links`
+
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Bookmark Manager</h1>
+    <div className="min-h-screen">
+      <header className="border-b border-border bg-surface/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl flex-col gap-1 px-4 py-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Library</p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-text">Bookmark Manager</h1>
+          </div>
+          <p className="text-sm text-muted">{countLabel}</p>
+        </div>
+      </header>
 
-      <form onSubmit={handleAdd} className="mb-8 flex gap-2">
-        <input
-          type="url"
-          required
-          placeholder="https://..."
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+      <main className="mx-auto max-w-5xl px-4 py-8">
+        <form
+          onSubmit={handleAdd}
+          className="mb-8 flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 shadow-card sm:flex-row sm:items-center"
         >
-          {loading ? 'Lade...' : 'Hinzufügen'}
-        </button>
-      </form>
+          <input
+            type="url"
+            required
+            placeholder="https://..."
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            className="flex-1 rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-text placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-50"
+          >
+            {loading ? 'Lade…' : 'Hinzufügen'}
+          </button>
+        </form>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+        {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
-      <ul className="space-y-3">
-        {bookmarks.map((b) => (
-          <li key={b.id} className="rounded-lg border border-slate-200 p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <a
-                  href={b.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium text-slate-900 hover:underline"
-                >
-                  {b.title || b.url}
-                </a>
-                {b.description && (
-                  <p className="mt-1 text-sm text-slate-500">{b.description}</p>
-                )}
-              </div>
-              <button
-                onClick={() => handleDelete(b.id)}
-                className="text-sm text-slate-400 hover:text-red-600"
-              >
-                Löschen
-              </button>
+        {bookmarks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface/50 px-6 py-16 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-bg text-accent">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <path d="M6 4h9a3 3 0 0 1 3 3v13l-7.5-3.5L3 20V7a3 3 0 0 1 3-3z" />
+              </svg>
             </div>
-          </li>
-        ))}
-      </ul>
-
-      {bookmarks.length === 0 && (
-        <p className="text-sm text-slate-400">Noch keine Bookmarks gespeichert.</p>
-      )}
+            <p className="text-base font-medium text-text">Noch keine Bookmarks</p>
+            <p className="mt-1 max-w-sm text-sm text-muted">
+              Füge oben eine URL hinzu — Titel, Beschreibung und Vorschaubild werden automatisch geladen.
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {bookmarks.map((b) => (
+              <BookmarkCard key={b.id} bookmark={b} onDelete={handleDelete} />
+            ))}
+          </ul>
+        )}
+      </main>
     </div>
   )
 }

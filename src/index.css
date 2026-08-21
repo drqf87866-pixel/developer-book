@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --bg: #07090d;
+  --surface: #12161e;
+  --surface-hover: #181e28;
+  --border: #2a3344;
+  --text: #f1f4f9;
+  --muted: #8b95a8;
+  --accent: #f5b942;
+  --accent-hover: #f7c563;
+  --accent-fg: #1a1408;
+  --danger: #f87171;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply min-h-screen bg-bg font-sans text-text antialiased;
+  }
+}
