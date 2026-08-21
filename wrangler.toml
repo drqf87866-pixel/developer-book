@@ -1,0 +1,21 @@
+name = "bookmark-manager"
+main = "worker/index.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Statische Frontend-Assets (Vite-Build-Output).
+# run_worker_first sorgt dafür, dass /api/* IMMER zuerst im Worker landet,
+# alle anderen Pfade werden direkt als statische Datei ausgeliefert
+# (mit SPA-Fallback auf index.html für Client-Side-Routing).
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+# D1-Datenbank-Binding.
+# database_id nach "wrangler d1 create bookmark-manager-db" hier eintragen.
+[[d1_databases]]
+binding = "DB"
+database_name = "bookmark-manager-db"
+database_id = "14518d7c-d679-4555-ab39-1b06cfd0afec"
