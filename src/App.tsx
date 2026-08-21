@@ -1,17 +1,41 @@
 import { useEffect, useState } from 'react'
+import { AuthScreen } from './components/AuthScreen'
 import { BookmarkCard } from './components/BookmarkCard'
-import { api } from './lib/api'
-import type { Bookmark } from './types'
+import { ApiError, api } from './lib/api'
+import type { Bookmark, User } from './types'
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null)
+  const [authReady, setAuthReady] = useState(false)
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.getBookmarks().then(setBookmarks).catch((e) => setError(e.message))
+    api
+      .me()
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setAuthReady(true))
   }, [])
+
+  useEffect(() => {
+    if (!user) {
+      setBookmarks([])
+      return
+    }
+    api
+      .getBookmarks()
+      .then(setBookmarks)
+      .catch((e) => {
+        if (e instanceof ApiError && e.status === 401) {
+          setUser(null)
+          return
+        }
+        setError(e instanceof Error ? e.message : 'Unbekannter Fehler')
+      })
+  }, [user])
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -40,6 +64,10 @@ export default function App() {
       ])
       setUrl('')
     } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        setUser(null)
+        return
+      }
       setError(e instanceof Error ? e.message : 'Unbekannter Fehler')
     } finally {
       setLoading(false)
@@ -51,18 +79,46 @@ export default function App() {
     setBookmarks((prev) => prev.filter((b) => b.id !== id))
   }
 
+  async function handleLogout() {
+    await api.logout().catch(() => undefined)
+    setUser(null)
+    setBookmarks([])
+  }
+
+  if (!authReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted">
+        Laden…
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <AuthScreen onAuthed={setUser} />
+  }
+
   const countLabel =
     bookmarks.length === 1 ? '1 gespeicherter Link' : `${bookmarks.length} gespeicherte Links`
 
   return (
     <div className="min-h-screen">
       <header className="border-b border-border bg-surface/80 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl flex-col gap-1 px-4 py-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Library</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight text-text">Bookmark Manager</h1>
           </div>
-          <p className="text-sm text-muted">{countLabel}</p>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-muted">{countLabel}</span>
+            <span className="text-text">{user.email}</span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-lg border border-border px-3 py-1.5 text-muted transition-colors hover:border-accent/40 hover:text-text"
+            >
+              Abmelden
+            </button>
+          </div>
         </div>
       </header>
 

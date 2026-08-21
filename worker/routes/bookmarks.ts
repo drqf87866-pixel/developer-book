@@ -1,19 +1,26 @@
 import { Hono } from 'hono'
+import { requireAuth } from '../middleware/auth'
+import type { AppEnv } from '../types'
 
-type Bindings = { DB: D1Database }
+const bookmarks = new Hono<AppEnv>()
 
-const bookmarks = new Hono<{ Bindings: Bindings }>()
+bookmarks.use('*', requireAuth)
 
-// GET /api/bookmarks
 bookmarks.get('/', async (c) => {
+  const user = c.get('user')
   const { results } = await c.env.DB.prepare(
-    'SELECT * FROM bookmarks ORDER BY created_at DESC'
-  ).all()
+    `SELECT id, url, title, description, image_url, notes, created_at
+     FROM bookmarks
+     WHERE user_id = ?
+     ORDER BY created_at DESC`
+  )
+    .bind(user.id)
+    .all()
   return c.json(results)
 })
 
-// POST /api/bookmarks
 bookmarks.post('/', async (c) => {
+  const user = c.get('user')
   const body = await c.req.json<{
     url?: string
     title?: string
@@ -27,25 +34,35 @@ bookmarks.post('/', async (c) => {
   }
 
   const result = await c.env.DB.prepare(
-    `INSERT INTO bookmarks (url, title, description, image_url, notes)
-     VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO bookmarks (url, title, description, image_url, notes, user_id)
+     VALUES (?, ?, ?, ?, ?, ?)`
   )
     .bind(
       body.url,
       body.title ?? null,
       body.description ?? null,
       body.image_url ?? null,
-      body.notes ?? null
+      body.notes ?? null,
+      user.id
     )
     .run()
 
   return c.json({ id: result.meta.last_row_id }, 201)
 })
 
-// DELETE /api/bookmarks/:id
 bookmarks.delete('/:id', async (c) => {
+  const user = c.get('user')
   const id = c.req.param('id')
-  await c.env.DB.prepare('DELETE FROM bookmarks WHERE id = ?').bind(id).run()
+  const result = await c.env.DB.prepare(
+    'DELETE FROM bookmarks WHERE id = ? AND user_id = ?'
+  )
+    .bind(id, user.id)
+    .run()
+
+  if (!result.meta.changes) {
+    return c.json({ error: 'Bookmark nicht gefunden' }, 404)
+  }
+
   return c.body(null, 204)
 })
 

@@ -1,6 +1,10 @@
 import { Hono } from 'hono'
+import { requireAuth } from '../middleware/auth'
+import type { AppEnv } from '../types'
 
-const scrape = new Hono()
+const scrape = new Hono<AppEnv>()
+
+scrape.use('*', requireAuth)
 
 // POST /api/scrape/og  { url: string }
 // Holt og:title / og:description / og:image per HTMLRewriter.
@@ -33,7 +37,6 @@ scrape.post('/og', async (c) => {
     },
   })
 
-  // .text() konsumiert den Stream, damit HTMLRewriter wirklich durchläuft
   await rewriter.transform(response).text()
 
   return c.json({
