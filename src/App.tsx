@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AuthScreen } from './components/AuthScreen'
 import { BookmarkCard } from './components/BookmarkCard'
 import { ApiError, api } from './lib/api'
+import { downloadFirefoxBookmarksHtml } from './lib/firefoxExport'
 import { parseFirefoxBookmarks } from './lib/firefoxBookmarks'
 import type { Bookmark, User } from './types'
 
@@ -162,6 +163,15 @@ export default function App() {
     }
   }
 
+  function handleFirefoxExport() {
+    setError(null)
+    if (bookmarks.length === 0) {
+      setError('Keine Bookmarks zum Exportieren')
+      return
+    }
+    downloadFirefoxBookmarksHtml(bookmarks)
+  }
+
   async function handleLogout() {
     await api.logout().catch(() => undefined)
     setUser(null)
@@ -285,6 +295,15 @@ export default function App() {
                 {showFirefoxImport ? 'Import schließen' : 'Firefox importieren'}
               </button>
               <button
+                type="button"
+                onClick={handleFirefoxExport}
+                disabled={bookmarks.length === 0}
+                className="rounded-lg border border-border px-3 py-2.5 text-xs font-medium text-muted transition-colors hover:border-accent/40 hover:text-text disabled:opacity-50"
+                title="Als HTML für Firefox-Import herunterladen"
+              >
+                Firefox exportieren
+              </button>
+              <button
                 type="submit"
                 disabled={loading}
                 className="rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-50"
@@ -325,6 +344,7 @@ export default function App() {
             <p className="text-sm font-medium text-text">Firefox-Lesezeichen importieren</p>
             <p className="mt-1 text-xs text-muted">
               JSON-Backup aus Firefox wählen. Optional ein Tag für alle neuen Bookmarks setzen.
+              Export: HTML-Datei über „Lesezeichen aus HTML importieren“ in Firefox einlesen.
             </p>
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="flex-1">

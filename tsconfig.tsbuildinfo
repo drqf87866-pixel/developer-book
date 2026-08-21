@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/components/authscreen.tsx","./src/components/bookmarkcard.tsx","./src/lib/api.ts","./src/lib/firefoxbookmarks.ts","./src/types/index.ts"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/authscreen.tsx","./src/components/bookmarkcard.tsx","./src/lib/api.ts","./src/lib/firefoxbookmarks.ts","./src/lib/firefoxexport.ts","./src/types/index.ts"],"version":"5.9.3"}
