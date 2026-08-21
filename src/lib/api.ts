@@ -54,6 +54,12 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  updateBookmark: (id: number, data: Partial<Bookmark>) =>
+    request<{ success: boolean }>(`/api/bookmarks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
   deleteBookmark: (id: number) =>
     request<void>(`/api/bookmarks/${id}`, { method: 'DELETE' }),
 

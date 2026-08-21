@@ -10,6 +10,7 @@ export interface Bookmark {
   description: string | null
   image_url: string | null
   notes: string | null
+  tags?: string[]
   created_at: string
 }
 
@@ -19,3 +20,4 @@ export interface OgMetadata {
   image: string | null
   siteName: string | null
 }
+
