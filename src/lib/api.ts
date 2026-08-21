@@ -54,6 +54,15 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  importBookmarks: (
+    bookmarks: { url: string; title?: string | null; image_url?: string | null }[],
+    tags?: string[]
+  ) =>
+    request<{ imported: number; skipped: number; total: number }>('/api/bookmarks/import', {
+      method: 'POST',
+      body: JSON.stringify({ bookmarks, tags }),
+    }),
+
   updateBookmark: (id: number, data: Partial<Bookmark>) =>
     request<{ success: boolean }>(`/api/bookmarks/${id}`, {
       method: 'PATCH',

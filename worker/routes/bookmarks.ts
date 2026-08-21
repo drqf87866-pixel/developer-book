@@ -104,6 +104,79 @@ bookmarks.post('/', async (c) => {
   return c.json({ id: bookmarkId }, 201)
 })
 
+bookmarks.post('/import', async (c) => {
+  const user = c.get('user')
+  const body = await c.req.json<{
+    bookmarks?: {
+      url?: string
+      title?: string | null
+      image_url?: string | null
+    }[]
+    tags?: string[]
+  }>()
+
+  if (!Array.isArray(body.bookmarks) || body.bookmarks.length === 0) {
+    return c.json({ error: 'bookmarks ist erforderlich' }, 400)
+  }
+
+  const { results: existingRows } = await c.env.DB.prepare(
+    'SELECT url FROM bookmarks WHERE user_id = ?'
+  )
+    .bind(user.id)
+    .all<{ url: string }>()
+
+  const existing = new Set(existingRows.map((row) => row.url))
+  const seen = new Set<string>()
+  const toInsert: { url: string; title: string | null; image_url: string | null }[] = []
+
+  for (const item of body.bookmarks) {
+    const url = item.url?.trim()
+    if (!url) continue
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue
+    } catch {
+      continue
+    }
+    if (existing.has(url) || seen.has(url)) continue
+    seen.add(url)
+    toInsert.push({
+      url,
+      title: item.title?.trim() ? item.title.trim() : null,
+      image_url: item.image_url?.trim() ? item.image_url.trim() : null,
+    })
+  }
+
+  const skipped = body.bookmarks.length - toInsert.length
+  const insertedIds: number[] = []
+
+  for (const item of toInsert) {
+    const result = await c.env.DB.prepare(
+      `INSERT INTO bookmarks (url, title, description, image_url, notes, user_id)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+      .bind(item.url, item.title, null, item.image_url, null, user.id)
+      .run()
+
+    if (result.meta.last_row_id) {
+      insertedIds.push(result.meta.last_row_id)
+    }
+  }
+
+  const tags = Array.isArray(body.tags) ? body.tags : []
+  if (tags.length > 0) {
+    for (const id of insertedIds) {
+      await syncTags(c.env.DB, id, tags)
+    }
+  }
+
+  return c.json({
+    imported: insertedIds.length,
+    skipped,
+    total: body.bookmarks.length,
+  })
+})
+
 bookmarks.patch('/:id', async (c) => {
   const user = c.get('user')
   const id = Number(c.req.param('id'))

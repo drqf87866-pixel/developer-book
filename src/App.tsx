@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AuthScreen } from './components/AuthScreen'
 import { BookmarkCard } from './components/BookmarkCard'
 import { ApiError, api } from './lib/api'
+import { parseFirefoxBookmarks } from './lib/firefoxBookmarks'
 import type { Bookmark, User } from './types'
 
 function getHostname(url: string) {
@@ -22,6 +23,11 @@ export default function App() {
   const [tagsInput, setTagsInput] = useState('')
   const [notesInput, setNotesInput] = useState('')
   const [showAdvancedAdd, setShowAdvancedAdd] = useState(false)
+  const [showFirefoxImport, setShowFirefoxImport] = useState(false)
+  const [importTagsInput, setImportTagsInput] = useState('')
+  const [importStatus, setImportStatus] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
+  const importFileRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -118,6 +124,42 @@ export default function App() {
   async function handleDelete(id: number) {
     await api.deleteBookmark(id)
     setBookmarks((prev) => prev.filter((b) => b.id !== id))
+  }
+
+  async function handleFirefoxImport(file: File) {
+    setImporting(true)
+    setError(null)
+    setImportStatus(null)
+    try {
+      const text = await file.text()
+      let parsedJson: unknown
+      try {
+        parsedJson = JSON.parse(text)
+      } catch {
+        throw new Error('Ungültige JSON-Datei')
+      }
+
+      const items = parseFirefoxBookmarks(parsedJson)
+      const tags = importTagsInput
+        .split(',')
+        .map((t) => t.trim().toLowerCase())
+        .filter((t) => t.length > 0)
+
+      const result = await api.importBookmarks(items, tags)
+      const next = await api.getBookmarks()
+      setBookmarks(next)
+      setImportStatus(`${result.imported} importiert, ${result.skipped} übersprungen`)
+      setImportTagsInput('')
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        setUser(null)
+        return
+      }
+      setError(e instanceof Error ? e.message : 'Unbekannter Fehler')
+    } finally {
+      setImporting(false)
+      if (importFileRef.current) importFileRef.current.value = ''
+    }
   }
 
   async function handleLogout() {
@@ -236,6 +278,13 @@ export default function App() {
                 {showAdvancedAdd ? 'Weniger Optionen' : '+ Notiz & Tags'}
               </button>
               <button
+                type="button"
+                onClick={() => setShowFirefoxImport((prev) => !prev)}
+                className="rounded-lg border border-border px-3 py-2.5 text-xs font-medium text-muted transition-colors hover:border-accent/40 hover:text-text"
+              >
+                {showFirefoxImport ? 'Import schließen' : 'Firefox importieren'}
+              </button>
+              <button
                 type="submit"
                 disabled={loading}
                 className="rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-50"
@@ -270,6 +319,46 @@ export default function App() {
             </div>
           )}
         </form>
+
+        {showFirefoxImport && (
+          <div className="mb-6 rounded-xl border border-border bg-surface p-3 shadow-card">
+            <p className="text-sm font-medium text-text">Firefox-Lesezeichen importieren</p>
+            <p className="mt-1 text-xs text-muted">
+              JSON-Backup aus Firefox wählen. Optional ein Tag für alle neuen Bookmarks setzen.
+            </p>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-muted">Tag für Import (kommagetrennt)</label>
+                <input
+                  type="text"
+                  placeholder="z.B. firefox"
+                  value={importTagsInput}
+                  onChange={(e) => setImportTagsInput(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-xs text-text placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+              </div>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void handleFirefoxImport(file)
+                }}
+              />
+              <button
+                type="button"
+                disabled={importing}
+                onClick={() => importFileRef.current?.click()}
+                className="rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-50"
+              >
+                {importing ? 'Importiere…' : 'JSON wählen'}
+              </button>
+            </div>
+            {importStatus && <p className="mt-2 text-xs text-muted">{importStatus}</p>}
+          </div>
+        )}
 
         {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
